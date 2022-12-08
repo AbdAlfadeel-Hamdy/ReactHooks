@@ -2,16 +2,24 @@ import React, { useEffect, useState } from "react";
 
 import Card from "../UI/Card";
 import "./Search.css";
-
+import useHttp from "../../hooks/http";
+import ErrorModal from "../UI/ErrorModal";
 const Search = React.memo(({ onFilterIngredients }) => {
   const [searchInput, setSearchInput] = useState("");
+  const { isLoading, data, error, sendRequest, clear } = useHttp();
   useEffect(() => {
     const timer = setTimeout(() => {
-      const loadIngredients = async () => {
-        const response =
-          await fetch(`https://ingredients-df31b-default-rtdb.firebaseio.com/ingredients.json
-        `);
-        const data = await response.json();
+      sendRequest(
+        `https://ingredients-df31b-default-rtdb.firebaseio.com/ingredients.json`,
+        "GET"
+      );
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [sendRequest, searchInput]);
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (!isLoading && !error && data) {
         const loadedIngredients = [];
         for (const key in data) {
           loadedIngredients.push({
@@ -23,18 +31,20 @@ const Search = React.memo(({ onFilterIngredients }) => {
         const filteredIngredients = loadedIngredients.filter((ing) =>
           ing.title.startsWith(searchInput)
         );
+
         if (!searchInput) return onFilterIngredients(loadedIngredients);
         onFilterIngredients(filteredIngredients);
-      };
-      loadIngredients();
+      }
     }, 500);
     return () => clearTimeout(timer);
-  }, [searchInput, onFilterIngredients]);
+  }, [isLoading, error, data, onFilterIngredients, searchInput]);
   return (
     <section className="search">
+      {error && <ErrorModal onClose={clear}>{error}</ErrorModal>}
       <Card>
         <div className="search-input">
           <label>Filter by Title</label>
+          {isLoading && <span>Loading...</span>}
           <input
             type="text"
             value={searchInput}
